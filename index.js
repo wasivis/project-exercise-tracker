@@ -31,7 +31,7 @@ const ExerciseSchema = new Schema({
 const Exercise = mongoose.model('Exercise', ExerciseSchema);
 
 app.use(cors());
-app.use(express.static('public'));
+app.use("/public", express.static(__dirname + "/public"));
 app.use(express.urlencoded({ extended: true }));
 
 app.get('/', (req, res) => {
