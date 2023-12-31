@@ -46,19 +46,6 @@ app.post('/api/users', (req, res) => {
     });
 });
 
-app.post('/api/users', (req, res) => {
-  const { username } = req.body;
-  const newUser = new User({ username });
-
-  newUser.save()
-    .then((user) => {
-      res.json({ username: user.username, _id: user._id });
-    })
-    .catch((err) => {
-      res.status(500).send(err);
-    });
-});
-
 app.post('/api/users/:_id/exercises', (req, res) => {
   const { description, duration, date } = req.body;
   const { _id } = req.params;
@@ -78,7 +65,6 @@ app.post('/api/users/:_id/exercises', (req, res) => {
       const exercise = updatedUser.exercises[updatedUser.exercises.length - 1];
       exercise.date = new Date(exercise.date).toDateString();
 
-      // Send the response after the document has been saved
       res.json({
         username: updatedUser.username,
         _id: updatedUser._id,
@@ -97,7 +83,14 @@ app.get('/api/users/:_id/logs', (req, res) => {
   const { from, to, limit } = req.query;
 
   User.findById(_id, (err, user) => {
-    if (err) return res.status(500).send(err);
+    if (err) {
+      console.error('Error finding user:', err);
+      return res.status(500).send('Internal Server Error');
+    }
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
     let log = user.exercises;
 
@@ -113,7 +106,6 @@ app.get('/api/users/:_id/logs', (req, res) => {
       log = log.slice(0, parseInt(limit));
     }
 
-    // Adjust the date format in the response
     log = log.map((entry) => ({
       description: entry.description,
       duration: entry.duration,
