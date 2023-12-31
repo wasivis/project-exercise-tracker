@@ -46,6 +46,21 @@ app.post('/api/users', (req, res) => {
     });
 });
 
+app.get('/api/users', (req, res) => {
+  User.find({})
+    .then((users) => {
+      const userArray = users.map((user) => ({
+        username: user.username,
+        _id: user._id,
+      }));
+      res.json(userArray);
+    })
+    .catch((err) => {
+      console.error('Error fetching users:', err);
+      res.status(500).send('Internal Server Error');
+    });
+});
+
 app.post('/api/users/:_id/exercises', (req, res) => {
   const { description, duration, date } = req.body;
   const { _id } = req.params;
