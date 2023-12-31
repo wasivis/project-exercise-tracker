@@ -84,13 +84,14 @@ const addExerciseToUser = (_id, description, duration, date, done) => {
         return done({ error: 'User not found' });
       }
 
-      const exercise = { description, duration, date: date || new Date().toDateString() };
+      const exercise = { description, duration, date: new Date(date) || new Date() };
       user.exercises.push(exercise);
 
       return user.save();
     })
     .then((updatedUser) => {
       const exercise = updatedUser.exercises[updatedUser.exercises.length - 1];
+
       exercise.date = new Date(exercise.date).toDateString();
 
       done(null, {
