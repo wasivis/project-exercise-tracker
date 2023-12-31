@@ -45,6 +45,23 @@ const createAndSaveUser = (username, done) => {
     });
 };
 
+app.post('/api/users', (req, res) => {
+  const { username } = req.body;
+
+  if (!username) {
+    return res.status(400).json({ error: 'Username is required' });
+  }
+
+  createAndSaveUser(username, (err, result) => {
+    if (err) {
+      console.error('Error creating user:', err);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+    console.log('User created successfully:', result);
+    res.json(result);
+  });
+});
+
 const getAllUsers = (done) => {
   User.find({})
     .then((users) => {
@@ -90,43 +107,80 @@ const addExerciseToUser = (_id, description, duration, date, done) => {
 };
 
 const getUserExerciseLog = (_id, from, to, limit, done) => {
-  User.findById(_id)
-    .then((user) => {
-      if (!user) {
-        return done({ error: 'User not found' });
-      }
+  User.findById(_id, (err, user) => {
+    if (err) {
+      console.error('Error finding user:', err);
+      return done('Internal Server Error');
+    }
 
-      let log = user.exercises;
+    if (!user) {
+      return done({ error: 'User not found' });
+    }
 
-      if (from) {
-        log = log.filter((entry) => entry.date >= new Date(from));
-      }
+    let log = user.exercises;
 
-      if (to) {
-        log = log.filter((entry) => entry.date <= new Date(to));
-      }
+    if (from) {
+      log = log.filter((entry) => entry.date >= new Date(from));
+    }
 
-      if (limit) {
-        log = log.slice(0, parseInt(limit));
-      }
+    if (to) {
+      log = log.filter((entry) => entry.date <= new Date(to));
+    }
 
-      log = log.map((entry) => ({
-        description: entry.description,
-        duration: entry.duration,
-        date: new Date(entry.date).toDateString()
-      }));
+    if (limit) {
+      log = log.slice(0, parseInt(limit));
+    }
 
-      done(null, {
-        username: user.username,
-        _id: user._id,
-        count: log.length,
-        log: log
-      });
-    })
-    .catch((err) => {
-      done(err);
+    log = log.map((entry) => ({
+      description: entry.description,
+      duration: entry.duration,
+      date: new Date(entry.date).toDateString()
+    }));
+
+    done(null, {
+      username: user.username,
+      _id: user._id,
+      count: log.length,
+      log: log
     });
+  });
 };
+
+app.get('/api/users', (req, res) => {
+  getAllUsers((err, result) => {
+    if (err) {
+      console.error('Error fetching users:', err);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+    res.json(result);
+  });
+});
+
+app.post('/api/users/:_id/exercises', (req, res) => {
+  const { _id } = req.params;
+  const { description, duration, date } = req.body;
+
+  addExerciseToUser(_id, description, duration, date, (err, result) => {
+    if (err) {
+      console.error('Error adding exercise:', err);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+    res.json(result);
+  });
+});
+
+app.get('/api/users/:_id/logs', (req, res) => {
+  const { _id } = req.params;
+  const { from, to, limit } = req.query;
+
+  getUserExerciseLog(_id, from, to, limit, (err, result) => {
+    if (err) {
+      console.error('Error fetching exercise log:', err);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+    res.json(result);
+  });
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
