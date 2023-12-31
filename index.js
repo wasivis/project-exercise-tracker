@@ -1,12 +1,13 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
+const cors = require('cors');
 const { Schema } = mongoose;
 const app = express();
 require('dotenv').config();
 
+app.use(cors())
 app.use(bodyParser.urlencoded({ extended: false }));
-
 app.use("/public", express.static(__dirname + "/public"));
 
 app.get("/", (req, res) => {
