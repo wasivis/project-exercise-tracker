@@ -31,44 +31,40 @@ const userSchema = new Schema({
 
 const User = mongoose.model('User', userSchema);
 
-app.post('/api/users', (req, res) => {
-  const { username } = req.body;
+const createAndSaveUser = (username, done) => {
   const newUser = new User({ username });
 
   newUser.save()
     .then((user) => {
-      console.log('Saved user:', user); // Add this line
-      res.json({ username: user.username, _id: user._id });
+      console.log('Saved user:', user);
+      done(null, { username: user.username, _id: user._id });
     })
     .catch((err) => {
-      console.error('Error saving user:', err); // Add this line
-      res.status(500).send(err);
+      console.error('Error saving user:', err);
+      done(err);
     });
-});
+};
 
-app.get('/api/users', (req, res) => {
+const getAllUsers = (done) => {
   User.find({})
     .then((users) => {
       const userArray = users.map((user) => ({
         username: user.username,
         _id: user._id,
       }));
-      res.json(userArray);
+      done(null, userArray);
     })
     .catch((err) => {
       console.error('Error fetching users:', err);
-      res.status(500).send('Internal Server Error');
+      done(err);
     });
-});
+};
 
-app.post('/api/users/:_id/exercises', (req, res) => {
-  const { description, duration, date } = req.body;
-  const { _id } = req.params;
-
+const addExerciseToUser = (_id, description, duration, date, done) => {
   User.findById(_id)
     .then((user) => {
       if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+        return done({ error: 'User not found' });
       }
 
       const exercise = { description, duration, date: date || new Date().toDateString() };
@@ -80,7 +76,7 @@ app.post('/api/users/:_id/exercises', (req, res) => {
       const exercise = updatedUser.exercises[updatedUser.exercises.length - 1];
       exercise.date = new Date(exercise.date).toDateString();
 
-      res.json({
+      done(null, {
         username: updatedUser.username,
         _id: updatedUser._id,
         description: exercise.description,
@@ -89,52 +85,48 @@ app.post('/api/users/:_id/exercises', (req, res) => {
       });
     })
     .catch((err) => {
-      res.status(500).send(err);
+      done(err);
     });
-});
+};
 
-app.get('/api/users/:_id/logs', (req, res) => {
-  const { _id } = req.params;
-  const { from, to, limit } = req.query;
+const getUserExerciseLog = (_id, from, to, limit, done) => {
+  User.findById(_id)
+    .then((user) => {
+      if (!user) {
+        return done({ error: 'User not found' });
+      }
 
-  User.findById(_id, (err, user) => {
-    if (err) {
-      console.error('Error finding user:', err);
-      return res.status(500).send('Internal Server Error');
-    }
+      let log = user.exercises;
 
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+      if (from) {
+        log = log.filter((entry) => entry.date >= new Date(from));
+      }
 
-    let log = user.exercises;
+      if (to) {
+        log = log.filter((entry) => entry.date <= new Date(to));
+      }
 
-    if (from) {
-      log = log.filter((entry) => entry.date >= new Date(from));
-    }
+      if (limit) {
+        log = log.slice(0, parseInt(limit));
+      }
 
-    if (to) {
-      log = log.filter((entry) => entry.date <= new Date(to));
-    }
+      log = log.map((entry) => ({
+        description: entry.description,
+        duration: entry.duration,
+        date: new Date(entry.date).toDateString()
+      }));
 
-    if (limit) {
-      log = log.slice(0, parseInt(limit));
-    }
-
-    log = log.map((entry) => ({
-      description: entry.description,
-      duration: entry.duration,
-      date: new Date(entry.date).toDateString()
-    }));
-
-    res.json({
-      username: user.username,
-      _id: user._id,
-      count: log.length,
-      log: log
+      done(null, {
+        username: user.username,
+        _id: user._id,
+        count: log.length,
+        log: log
+      });
+    })
+    .catch((err) => {
+      done(err);
     });
-  });
-});
+};
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
