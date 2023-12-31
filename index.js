@@ -8,7 +8,7 @@ require('dotenv').config();
 
 app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
-app.use(express.static("public"));
+app.use("/public", express.static(__dirname + "/public"));
 
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/views/index.html");
